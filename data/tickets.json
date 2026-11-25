@@ -1,0 +1,36 @@
+[
+  {
+    "id": "TICK-20261125-001",
+    "sessionId": "SES-20261125-001",
+    "subject": "動画サムネイル更新の反映遅延について（30分以上経過）",
+    "detail": "管理画面から差し替えたが、30分以上経過してもシークレットウィンドウで古い画像のまま反映されない。",
+    "category": "システム不具合",
+    "urgency": "高",
+    "phoneNumber": "090-1234-5678",
+    "linkedKnowledgeId": "KN-002",
+    "user": {
+      "name": "坪井",
+      "email": "a-tsuboi@ntv.co.jp"
+    },
+    "status": "新規",
+    "createdAt": "2026-11-25T14:12:00+09:00",
+    "updatedAt": "2026-11-25T14:12:00+09:00"
+  },
+  {
+    "id": "TICK-20261125-002",
+    "sessionId": "SES-20261125-002",
+    "subject": "CTVアプリ向けPRISM APIキーの発行申請手順確認",
+    "detail": "CTVアプリの開発環境で使うAPIキーを至急発行したいが申請窓口が不明。",
+    "category": "アカウント・権限",
+    "urgency": "高",
+    "phoneNumber": "03-5555-0199",
+    "linkedKnowledgeId": null,
+    "user": {
+      "name": "佐藤（Wands担当）",
+      "email": "sato@wands.co.jp"
+    },
+    "status": "対応中",
+    "createdAt": "2026-11-25T15:22:00+09:00",
+    "updatedAt": "2026-11-25T15:40:00+09:00"
+  }
+]
