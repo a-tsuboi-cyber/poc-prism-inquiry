@@ -1,0 +1,94 @@
+[
+  {
+    "sessionId": "SES-20261125-001",
+    "user": {
+      "name": "坪井",
+      "email": "a-tsuboi@ntv.co.jp"
+    },
+    "startedAt": "2026-11-25T14:10:00+09:00",
+    "topic": "サムネイル画像の反映遅延",
+    "status": "エスカレーション",
+    "linkedKnowledgeId": "KN-002",
+    "isKnowledgeCandidate": false,
+    "messages": [
+      {
+        "sender": "user",
+        "text": "管理画面から動画のサムネイルを差し替えたのですが、ページ上で反映されません。",
+        "timestamp": "14:10:05"
+      },
+      {
+        "sender": "ai",
+        "text": "PRISM配信基盤ではCloudFrontによるCDNキャッシュが設定されているため、サムネイル画像の反映には最大15分程度かかる場合があります。15分経過しても更新されない場合は、ブラウザのキャッシュクリア（Shift+F5）をお試しください。（参照ナレッジ: KN-002）",
+        "timestamp": "14:10:09"
+      },
+      {
+        "sender": "user",
+        "text": "すでに30分以上経過しており、シークレットウィンドウでも古い画像のままです。",
+        "timestamp": "14:11:20"
+      },
+      {
+        "sender": "ai",
+        "text": "承知いたしました。30分以上経過してもキャッシュが更新されない場合、CDNパージの遅延またはオリジンS3への反映障害の可能性があります。恐れ入りますが、「エスカレーション」ボタンより運用チームへお問い合わせください。",
+        "timestamp": "14:11:25"
+      }
+    ]
+  },
+  {
+    "sessionId": "SES-20261125-002",
+    "user": {
+      "name": "佐藤（Wands担当）",
+      "email": "sato@wands.co.jp"
+    },
+    "startedAt": "2026-11-25T15:20:00+09:00",
+    "topic": "CTVアプリ向けAPIキーの発行手順",
+    "status": "エスカレーション",
+    "linkedKnowledgeId": null,
+    "isKnowledgeCandidate": true,
+    "messages": [
+      {
+        "sender": "user",
+        "text": "CTVアプリの開発環境で使うPRISM APIキーを発行していただきたいのですが、どこから申請すればよいですか？",
+        "timestamp": "15:20:05"
+      },
+      {
+        "sender": "ai",
+        "text": "PRISMのアカウント申請窓口は案内可能ですが、CTVアプリ用のAPIキー個別発行手順については現在ナレッジに登録がございません。運用チームへエスカレーションしていただけますでしょうか。",
+        "timestamp": "15:20:10"
+      },
+      {
+        "sender": "user",
+        "text": "開発スケジュールが迫っており、至急環境を立ち上げたいです。エスカレーションします。",
+        "timestamp": "15:21:00"
+      }
+    ]
+  },
+  {
+    "sessionId": "SES-20261125-003",
+    "user": {
+      "name": "田中（VAP担当）",
+      "email": "tanaka@vap.co.jp"
+    },
+    "startedAt": "2026-11-25T16:00:00+09:00",
+    "topic": "視聴データのエクスポート方法",
+    "status": "クローズ",
+    "linkedKnowledgeId": "KN-003",
+    "isKnowledgeCandidate": false,
+    "messages": [
+      {
+        "sender": "user",
+        "text": "先週の番組動画の視聴数ログをCSVで落としたいです。",
+        "timestamp": "16:00:05"
+      },
+      {
+        "sender": "ai",
+        "text": "画面右上のメニューアイコンから「データ分析・レポート」を選択し、対象期間を指定の上で「CSVエクスポート」をクリックしてください。完了後にメールが届きます。（参照ナレッジ: KN-003）",
+        "timestamp": "16:00:10"
+      },
+      {
+        "sender": "user",
+        "text": "メニューから無事ダウンロードできました！ありがとうございます。",
+        "timestamp": "16:01:30"
+      }
+    ]
+  }
+]

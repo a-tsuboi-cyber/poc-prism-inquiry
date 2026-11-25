@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRISM一次受けAIアシスタント & ナレッジ育成プラットフォーム</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- アプリヘッダー -->
+  <header class="app-header">
+    <div class="brand-area">
+      <h1 class="brand-title">PRISM Inquiry Desk</h1>
+      <span class="brand-badge">PoC v1.1</span>
+    </div>
+
+    <div class="header-controls">
+      <!-- 4.1. ユーザー情報表示 -->
+      <div class="user-display">
+        <span>👤</span>
+        <span id="currentUserName">坪井 (a-tsuboi@ntv.co.jp)</span>
+      </div>
+
+      <!-- 4.1. ロール切り替え機能（PoCモック用） -->
+      <div class="role-switcher-box">
+        <label for="roleSelect" style="font-size: 12px; color: var(--text-muted); font-weight: 600;">[モック] ロール切替:</label>
+        <select id="roleSelect" class="role-select">
+          <option value="user">一般ユーザー</option>
+          <option value="admin">管理ユーザー</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-wrapper">
+
+    <!-- ==================== 一般ユーザー画面 (Chat View) ==================== -->
+    <section id="userView" class="user-view">
+      <div class="chat-card">
+        <div class="chat-header">
+          <div class="chat-title-box">
+            <h2>PRISM AI サポート</h2>
+            <p>システム操作、仕様、アカウント申請等の疑問をAIが一次受けします</p>
+          </div>
+          <button id="btnNewChat" class="btn-new-chat">🔄 新しい会話を開始</button>
+        </div>
+
+        <!-- メッセージログ -->
+        <div id="chatMessages" class="chat-messages">
+          <div class="msg-bubble ai">
+こんにちは！PRISM一次受けAIアシスタントです。
+操作方法や不具合、アカウント申請など、わからないことがあれば何でも聞いてください。
+          </div>
+        </div>
+
+        <!-- 解決アクションボタン群（送信欄近接） -->
+        <div class="chat-actions-bar">
+          <button id="btnCloseAction" class="btn btn-close-action">✨ 解決した（クローズ）</button>
+          <button id="btnEscalateAction" class="btn btn-escalate-action">🚨 解決しない（エスカレーション）</button>
+        </div>
+
+        <!-- 入力バー -->
+        <div class="chat-input-bar">
+          <input type="text" id="chatInput" class="chat-input" placeholder="例: パートナー企業のアカウント追加申請はどうすればいい？" />
+          <button id="btnSendMessage" class="btn btn-primary">送信</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 管理ユーザー画面 (Admin Dashboard) ==================== -->
+    <section id="adminView" class="admin-view" style="display: none;">
+      <!-- ナビゲーションタブ -->
+      <div class="admin-nav-tabs">
+        <div class="nav-tab active" data-tab="ticketsTab">🎫 チケット一覧</div>
+        <div class="nav-tab" data-tab="conversationsTab">💬 やり取り一覧（ナレッジ抽出）</div>
+        <div class="nav-tab" data-tab="knowledgeTab">📚 ナレッジ一覧</div>
+      </div>
+
+      <!-- タブ1: チケット一覧 -->
+      <div id="ticketsTab" class="admin-content-area tab-content">
+        <div class="toolbar">
+          <div class="filters-group">
+            <select id="filterStatus" class="filter-select">
+              <option value="all">ステータス: すべて</option>
+              <option value="新規">新規</option>
+              <option value="対応中">対応中</option>
+              <option value="ユーザー確認待ち">ユーザー確認待ち</option>
+              <option value="完了">完了</option>
+            </select>
+            <select id="filterUrgency" class="filter-select">
+              <option value="all">緊急度: すべて</option>
+              <option value="高">緊急度: 高</option>
+              <option value="中">緊急度: 中</option>
+              <option value="低">緊急度: 低</option>
+            </select>
+            <select id="filterCategory" class="filter-select">
+              <option value="all">カテゴリ: すべて</option>
+              <option value="アカウント・権限">アカウント・権限</option>
+              <option value="システム不具合">システム不具合</option>
+              <option value="操作方法">操作方法</option>
+            </select>
+          </div>
+          <div>
+            <button id="btnRefreshTickets" class="btn btn-secondary">🔄 更新</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th data-sort="id">チケットID ⬍</th>
+                <th data-sort="subject">件名 ⬍</th>
+                <th data-sort="category">カテゴリ ⬍</th>
+                <th data-sort="urgency">緊急度 ⬍</th>
+                <th>起票者</th>
+                <th>ナレッジID</th>
+                <th data-sort="status">ステータス ⬍</th>
+                <th data-sort="createdAt">起票日時 ⬍</th>
+              </tr>
+            </thead>
+            <tbody id="ticketTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- タブ2: やり取り一覧（ナレッジ抽出） -->
+      <div id="conversationsTab" class="admin-content-area tab-content" style="display: none;">
+        <div class="toolbar">
+          <p style="font-size: 13px; color: var(--text-muted);">
+            ユーザーとAIの過去ログを監視します。「推奨」フラグの対話からワンクリックで新規ナレッジ（FAQ）を作成できます。
+          </p>
+          <button id="btnRefreshConversations" class="btn btn-secondary">🔄 更新</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>セッションID</th>
+                <th>主トピック</th>
+                <th>ユーザー</th>
+                <th>ステータス</th>
+                <th>ナレッジID</th>
+                <th>ナレッジ作成</th>
+                <th>開始日時</th>
+              </tr>
+            </thead>
+            <tbody id="conversationTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- タブ3: ナレッジ一覧 -->
+      <div id="knowledgeTab" class="admin-content-area tab-content" style="display: none;">
+        <div class="toolbar">
+          <input type="text" id="knowledgeSearchInput" class="chat-input" style="max-width: 320px;" placeholder="ナレッジをキーワード検索..." />
+          <button id="btnNewKnowledgeManual" class="btn btn-primary">➕ ナレッジ新規作成</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ナレッジID</th>
+                <th>カテゴリ</th>
+                <th>質問（Q）</th>
+                <th>タグ</th>
+                <th>参照回数</th>
+                <th>最終更新</th>
+              </tr>
+            </thead>
+            <tbody id="knowledgeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== モーダル群 ==================== -->
+
+  <!-- 1. エスカレーションチケット起票モーダル（一般ユーザー用） -->
+  <div id="escalateModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🚨 運用チームへチケットエスカレーション</h3>
+        <button class="modal-close-btn" onclick="closeModal('escalateModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          これまでの対話内容をもとにAIが件名と内容を要約しました。必要に応じて修正・追記してください。
+        </p>
+        <div class="form-group">
+          <label>件名（AI自動要約）</label>
+          <input type="text" id="escSubject" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>問い合わせ詳細</label>
+          <textarea id="escDetail" class="form-control"></textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label>カテゴリ</label>
+            <select id="escCategory" class="form-control">
+              <option value="アカウント・権限">アカウント・権限</option>
+              <option value="システム不具合">システム不具合</option>
+              <option value="操作方法">操作方法</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>緊急度フラグ</label>
+            <select id="escUrgency" class="form-control">
+              <option value="高">高（業務停止・至急）</option>
+              <option value="中" selected>中（本日中希望）</option>
+              <option value="低">低（相談・確認）</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>緊急連絡先（電話番号）※必須</label>
+          <input type="text" id="escPhone" class="form-control" placeholder="例: 090-1234-5678" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('escalateModal')">キャンセル</button>
+        <button id="btnSubmitEscalate" class="btn btn-primary">チケットを送信する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. チケット詳細モーダル（管理者用） -->
+  <div id="ticketDetailModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content wide">
+      <div class="modal-header">
+        <h3 id="tdModalTitle">チケット詳細</h3>
+        <button class="modal-close-btn" onclick="closeModal('ticketDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 24px;">
+          <div>
+            <div class="form-group">
+              <label>ステータス変更</label>
+              <select id="tdStatusSelect" class="form-control" style="font-weight: 700;">
+                <option value="新規">新規</option>
+                <option value="対応中">対応中</option>
+                <option value="ユーザー確認待ち">ユーザー確認待ち</option>
+                <option value="完了">完了</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>起票者 / 連絡先</label>
+              <div id="tdUserInfo" style="background:#f8fafc; padding:12px; border-radius:8px; font-size:13px; border:1px solid var(--border);"></div>
+            </div>
+            <div class="form-group">
+              <label>問い合わせ本文</label>
+              <div id="tdDetail" style="background:#f8fafc; padding:12px; border-radius:8px; font-size:13px; border:1px solid var(--border); white-space:pre-wrap;"></div>
+            </div>
+          </div>
+          <div>
+            <label style="display:block; font-size:13px; font-weight:700; margin-bottom:6px;">実際のやり取りログ（全発話履歴）</label>
+            <div id="tdConversationLogs" class="log-viewer" style="height: 380px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('ticketDetailModal')">閉じる</button>
+        <button id="btnSaveTicketStatus" class="btn btn-primary">ステータスを更新</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. やり取り詳細 & ナレッジ抽出モーダル（左右2ペイン） -->
+  <div id="conversationModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content wide">
+      <div class="modal-header">
+        <h3 id="convModalTitle">やり取り詳細 & ナレッジ抽出</h3>
+        <button class="modal-close-btn" onclick="closeModal('conversationModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="split-pane">
+          <!-- 左側: 実際のやり取り -->
+          <div class="pane-col">
+            <div class="pane-title">💬 実際のやり取り履歴</div>
+            <div id="convModalLogs" class="log-viewer"></div>
+          </div>
+
+          <!-- 右側: ナレッジ登録フォーム -->
+          <div class="pane-col">
+            <div class="pane-title">📝 新規ナレッジ登録（AI要約初期値）</div>
+            <div style="flex:1; overflow-y:auto; padding-right:4px;">
+              <div class="form-group">
+                <label>質問（Q）</label>
+                <textarea id="convExtractedQ" class="form-control" style="min-height:70px;"></textarea>
+              </div>
+              <div class="form-group">
+                <label>回答（A）</label>
+                <textarea id="convExtractedA" class="form-control" style="min-height:100px;"></textarea>
+              </div>
+              <div class="form-group">
+                <label>カテゴリ</label>
+                <select id="convExtractedCategory" class="form-control">
+                  <option value="アカウント・権限">アカウント・権限</option>
+                  <option value="システム不具合">システム不具合</option>
+                  <option value="操作方法">操作方法</option>
+                  <option value="その他">その他</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>タグ（カンマ区切り）</label>
+                <input type="text" id="convExtractedTags" class="form-control" placeholder="例: API, CTV, 申請" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('conversationModal')">キャンセル</button>
+        <button id="btnRegisterExtractedKnowledge" class="btn btn-primary">➕ ナレッジとして登録</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. ナレッジ詳細編集モーダル（AIヒント付き） -->
+  <div id="knowledgeDetailModal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="kdModalTitle">ナレッジ詳細・編集</h3>
+        <button class="modal-close-btn" onclick="closeModal('knowledgeDetailModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- AIヒント表示エリア -->
+        <div id="kdAiHint" class="ai-hint-box"></div>
+
+        <div class="form-group">
+          <label>質問（Q）</label>
+          <textarea id="kdQuestion" class="form-control" style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>回答（A）</label>
+          <textarea id="kdAnswer" class="form-control" style="min-height:120px;"></textarea>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+          <div class="form-group">
+            <label>カテゴリ</label>
+            <select id="kdCategory" class="form-control">
+              <option value="アカウント・権限">アカウント・権限</option>
+              <option value="システム不具合">システム不具合</option>
+              <option value="操作方法">操作方法</option>
+              <option value="その他">その他</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>タグ（カンマ区切り）</label>
+            <input type="text" id="kdTags" class="form-control" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('knowledgeDetailModal')">閉じる</button>
+        <button id="btnSaveKnowledge" class="btn btn-primary">保存する</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

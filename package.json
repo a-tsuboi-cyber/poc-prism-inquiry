@@ -1,0 +1,13 @@
+{
+  "name": "poc-prism-inquiry",
+  "version": "1.1.0",
+  "description": "PRISM一次受けAIアシスタント & ナレッジ育成プラットフォーム",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  }
+}
