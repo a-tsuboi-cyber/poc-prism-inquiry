@@ -9,10 +9,30 @@ let currentDetailSessionId = null;
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
+  loadSystemStatus();
   loadTickets();
   loadConversations();
   loadKnowledge();
 });
+
+function loadSystemStatus() {
+  fetch('/api/system/status')
+    .then(res => res.json())
+    .then(data => {
+      const badge = document.getElementById('aiStatusBadge');
+      if (!badge) return;
+      if (data.isGeminiActive) {
+        badge.textContent = `⚡ AI: ${data.model} (Online)`;
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#166534';
+      } else {
+        badge.textContent = `🛡️ AI: ${data.model} (Mock Fallback)`;
+        badge.style.background = '#f1f5f9';
+        badge.style.color = '#475569';
+      }
+    })
+    .catch(() => {});
+}
 
 function setupEventListeners() {
   // ロール切り替え
