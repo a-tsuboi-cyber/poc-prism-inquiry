@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -5,6 +6,7 @@ const path = require('path');
 const knowledgeService = require('./knowledgeService');
 const conversationService = require('./conversationService');
 const ticketService = require('./ticketService');
+const geminiService = require('./geminiService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,14 +15,28 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// システム・AI設定ステータスAPI
+app.get('/api/system/status', (req, res) => {
+  res.json({
+    aiMode: geminiService.isAvailable() ? 'gemini' : 'mock',
+    model: geminiService.getModelName(),
+    isGeminiActive: geminiService.isAvailable()
+  });
+});
+
 // 1. チャット対話API
-app.post('/api/chat', (req, res) => {
-  const { sessionId, user, message } = req.body;
-  if (!message) {
-    return res.status(400).json({ error: 'message is required' });
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { sessionId, user, message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'message is required' });
+    }
+    const result = await conversationService.handleUserMessage(sessionId, user, message);
+    res.json(result);
+  } catch (err) {
+    console.error('Chat error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  const result = conversationService.handleUserMessage(sessionId, user, message);
-  res.json(result);
 });
 
 // セッションステータス更新（クローズ等）
@@ -31,9 +47,14 @@ app.post('/api/chat/status', (req, res) => {
 });
 
 // エスカレーション用サマリー取得
-app.get('/api/chat/summary/:sessionId', (req, res) => {
-  const summary = conversationService.summarizeForTicket(req.params.sessionId);
-  res.json(summary);
+app.get('/api/chat/summary/:sessionId', async (req, res) => {
+  try {
+    const summary = await conversationService.summarizeForTicket(req.params.sessionId);
+    res.json(summary);
+  } catch (err) {
+    console.error('Summary error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // 2. やり取りログ一覧 & 詳細API
@@ -59,7 +80,6 @@ app.get('/api/tickets/:id', (req, res) => {
   const ticket = ticketService.getById(req.params.id);
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
   
-  // 紐づく実際の会話ログも添えて返す
   let conversation = null;
   if (ticket.sessionId) {
     conversation = conversationService.getById(ticket.sessionId);
@@ -91,22 +111,36 @@ app.get('/api/knowledge', (req, res) => {
   res.json(knowledgeService.getAll());
 });
 
-app.post('/api/knowledge', (req, res) => {
-  const { category, question, answer, tags } = req.body;
-  if (!question || !answer) {
-    return res.status(400).json({ error: 'question and answer are required' });
+app.post('/api/knowledge', async (req, res) => {
+  try {
+    const { category, question, answer, tags } = req.body;
+    if (!question || !answer) {
+      return res.status(400).json({ error: 'question and answer are required' });
+    }
+    const created = await knowledgeService.create({ category, question, answer, tags });
+    res.status(201).json(created);
+  } catch (err) {
+    console.error('Knowledge create error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  const created = knowledgeService.create({ category, question, answer, tags });
-  res.status(201).json(created);
 });
 
-app.put('/api/knowledge/:id', (req, res) => {
-  const updated = knowledgeService.update(req.params.id, req.body);
-  if (!updated) return res.status(404).json({ error: 'Knowledge not found' });
-  res.json(updated);
+app.put('/api/knowledge/:id', async (req, res) => {
+  try {
+    const updated = await knowledgeService.update(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Knowledge not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('Knowledge update error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // サーバー起動
 app.listen(PORT, () => {
+  console.log(`=======================================================`);
   console.log(`[PRISM Inquiry Server] Running at http://localhost:${PORT}`);
+  console.log(`[PRISM AI Model] Target: ${geminiService.getModelName()}`);
+  console.log(`[PRISM AI Status] ${geminiService.isAvailable() ? 'ONLINE (Gemini API Active)' : 'OFFLINE (Fallback Mock Active)'}`);
+  console.log(`=======================================================`);
 });

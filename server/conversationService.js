@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const knowledgeService = require('./knowledgeService');
+const geminiService = require('./geminiService');
 
 const CONVERSATIONS_FILE = path.join(__dirname, '../data/conversations.json');
 
@@ -25,7 +26,7 @@ const conversationService = {
   },
 
   // ユーザーの発話に対して回答を生成し、セッションに記録
-  handleUserMessage(sessionId, user, messageText) {
+  async handleUserMessage(sessionId, user, messageText) {
     let list = readConversations();
     let conv = list.find(c => c.sessionId === sessionId);
 
@@ -50,20 +51,37 @@ const conversationService = {
       timestamp
     });
 
-    // ナレッジ検索で回答生成
-    const matched = knowledgeService.search(messageText);
-    let aiResponseText = "";
-    let matchedKnowledge = null;
+    // 1. Gemini APIによる回答生成を試行
+    const allKnowledge = knowledgeService.getAll();
+    let geminiResult = null;
+    if (geminiService.isAvailable()) {
+      geminiResult = await geminiService.generateChatReply({
+        message: messageText,
+        conversationHistory: conv.messages,
+        knowledgeList: allKnowledge
+      });
+    }
 
-    if (matched.length > 0) {
-      matchedKnowledge = matched[0];
-      conv.linkedKnowledgeId = matchedKnowledge.id;
-      knowledgeService.incrementUsage(matchedKnowledge.id);
-      aiResponseText = `${matchedKnowledge.answer}\n\n（💡 参照ナレッジ: ${matchedKnowledge.id} - ${matchedKnowledge.category}）\nもし解決しない場合は、下の「エスカレーション」ボタンから運用チームへお知らせください。`;
+    let aiResponseText = "";
+    if (geminiResult && geminiResult.text) {
+      aiResponseText = geminiResult.text;
+      conv.linkedKnowledgeId = geminiResult.linkedKnowledgeId || conv.linkedKnowledgeId;
+      conv.isKnowledgeCandidate = Boolean(geminiResult.isKnowledgeCandidate);
+      if (conv.linkedKnowledgeId) {
+        knowledgeService.incrementUsage(conv.linkedKnowledgeId);
+      }
     } else {
-      // 未解決・ナレッジ候補判定
-      conv.isKnowledgeCandidate = true;
-      aiResponseText = `申し訳ありません。ご質問の件について該当するマニュアル・ナレッジが見つかりませんでした。\n\n詳細を伺い運用チームで調査いたしますので、下の「エスカレーション」ボタンよりお問い合わせをお願いいたします。`;
+      // 2. フォールバック: ルールベースのナレッジ検索で回答生成
+      const matched = knowledgeService.search(messageText);
+      if (matched.length > 0) {
+        const matchedKnowledge = matched[0];
+        conv.linkedKnowledgeId = matchedKnowledge.id;
+        knowledgeService.incrementUsage(matchedKnowledge.id);
+        aiResponseText = `${matchedKnowledge.answer}\n\n（💡 参照ナレッジ: ${matchedKnowledge.id} - ${matchedKnowledge.category}）\nもし解決しない場合は、下の「エスカレーション」ボタンから運用チームへお知らせください。`;
+      } else {
+        conv.isKnowledgeCandidate = true;
+        aiResponseText = `申し訳ありません。ご質問の件について該当するマニュアル・ナレッジが見つかりませんでした。\n\n詳細を伺い運用チームで調査いたしますので、下の「エスカレーション」ボタンよりお問い合わせをお願いいたします。`;
+      }
     }
 
     conv.messages.push({
@@ -92,7 +110,7 @@ const conversationService = {
   },
 
   // エスカレーション用/ナレッジ登録用のAI要約サマリー生成
-  summarizeForTicket(sessionId) {
+  async summarizeForTicket(sessionId) {
     const conv = this.getById(sessionId);
     if (!conv || conv.messages.length === 0) {
       return {
@@ -107,26 +125,38 @@ const conversationService = {
 
     const userMsgs = conv.messages.filter(m => m.sender === 'user').map(m => m.text);
     const firstMsg = userMsgs[0] || "システム問い合わせ";
-    const fullLog = conv.messages.map(m => `[${m.sender === 'user' ? 'ユーザー' : 'AI'}]: ${m.text}`).join('\n');
 
-    let category = "一般";
-    let urgency = "中";
+    // 1. Gemini による要約とQA抽出を試行
+    let geminiSummary = null;
+    let geminiQA = null;
+    if (geminiService.isAvailable()) {
+      [geminiSummary, geminiQA] = await Promise.all([
+        geminiService.summarizeTicket({ messages: conv.messages, user: conv.user }),
+        geminiService.extractKnowledgeQA({ messages: conv.messages })
+      ]);
+    }
+
+    // デフォルト・ルールベース値の算出
+    const fullLog = conv.messages.map(m => `[${m.sender === 'user' ? 'ユーザー' : 'AI'}]: ${m.text}`).join('\n');
+    let fallbackCategory = "一般";
+    let fallbackUrgency = "中";
     if (fullLog.includes("アカウント") || fullLog.includes("権限") || fullLog.includes("申請")) {
-      category = "アカウント・権限";
+      fallbackCategory = "アカウント・権限";
     } else if (fullLog.includes("エラー") || fullLog.includes("動かない") || fullLog.includes("障害") || fullLog.includes("504")) {
-      category = "システム不具合";
-      urgency = "高";
+      fallbackCategory = "システム不具合";
+      fallbackUrgency = "高";
     } else if (fullLog.includes("手順") || fullLog.includes("エクスポート") || fullLog.includes("方法")) {
-      category = "操作方法";
+      fallbackCategory = "操作方法";
     }
 
     return {
-      subject: `【問い合わせ】${firstMsg.slice(0, 35)}`,
-      detail: userMsgs.join('\n'),
-      suggestedQuestion: firstMsg,
-      suggestedAnswer: "【回答案】運用チームによる確認の上、以下の手順でご案内します：\n・対象設定の確認\n・対応完了後の通知",
-      category,
-      urgency,
+      subject: geminiSummary?.subject || `【問い合わせ】${firstMsg.slice(0, 35)}`,
+      detail: geminiSummary?.detail || userMsgs.join('\n'),
+      suggestedQuestion: geminiQA?.suggestedQuestion || firstMsg,
+      suggestedAnswer: geminiQA?.suggestedAnswer || "【回答案】運用チームによる確認の上、以下の手順でご案内します：\n・対象設定の確認\n・対応完了後の通知",
+      category: geminiSummary?.category || fallbackCategory,
+      urgency: geminiSummary?.urgency || fallbackUrgency,
+      tags: geminiQA?.tags || [fallbackCategory],
       linkedKnowledgeId: conv.linkedKnowledgeId,
       fullLog: conv.messages
     };
