@@ -121,10 +121,11 @@ const documentService = {
   },
 
   /**
-   * ナレッジ種別ドキュメントのテキスト内容を抽出・集約（AI回答用コンテキスト）
+   * 登録ドキュメント（ナレッジ・マニュアル）のテキスト内容を抽出・集約（AI回答用コンテキスト）
    */
   getKnowledgeDocumentsContent() {
-    const list = this.getAll({ type: 'knowledge' });
+    // ナレッジだけでなくマニュアル等も含めた全ドキュメントを対象にする
+    const list = this.getAll();
     const textExtensions = ['.txt', '.md', '.csv', '.json'];
     let combined = '';
 
@@ -134,7 +135,8 @@ const documentService = {
         if (fs.existsSync(filePath)) {
           try {
             const content = fs.readFileSync(filePath, 'utf-8');
-            combined += `\n\n【登録ドキュメント: ${doc.title} (${doc.originalFileName})】\n${content.slice(0, 3000)}`;
+            const typeLabel = doc.type === 'manual' ? 'マニュアル' : 'ナレッジ';
+            combined += `\n\n【登録ドキュメント: ${doc.title} [種別: ${typeLabel}] (${doc.originalFileName})】\n${content.slice(0, 3000)}`;
           } catch (err) {
             console.warn(`[DocumentService] Failed to read doc content: ${filePath}`, err.message);
           }
