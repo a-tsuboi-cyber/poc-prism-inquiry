@@ -24,7 +24,8 @@ const testFiles = [
   'test/modules/ticketService.test.js',
   'test/modules/conversationService.test.js',
   'test/modules/geminiService.test.js',
-  'test/modules/documentService.test.js'
+  'test/modules/documentService.test.js',
+  'test/modules/teamsService.test.js'
 ].map(f => path.join(PROJECT_ROOT, f)).filter(f => fs.existsSync(f));
 
 if (testFiles.length === 0) {

@@ -51,6 +51,8 @@
 | `documentService` | `getById()` (正常/異常) | 実在IDで取得でき、存在しないIDで `null` が返ること |
 | `documentService` | `getKnowledgeDocumentsContent()` | ナレッジおよびマニュアル（TXT, MD, CSV, JSON, PDF）のドキュメント内容をテキスト抽出しAIプロンプト用に統合できること |
 | `documentService` | `create()` & `delete()` | ドキュメントのアップロード登録と物理ファイル削除・データ削除が正常に動作すること |
+| `teamsService` | `buildTicketCard()` | Teams Adaptive Card v1.4 フォーマット、タイトル、FactSet、OpenUrlアクションが正しく生成されること |
+| `teamsService` | `sendTicketNotification()` | Webhook URL 未設定時でもモック送信として例外なく安全に正常終了すること |
 
 ---
 

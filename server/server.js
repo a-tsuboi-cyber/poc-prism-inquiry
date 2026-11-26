@@ -9,6 +9,7 @@ const conversationService = require('./conversationService');
 const ticketService = require('./ticketService');
 const documentService = require('./documentService');
 const geminiService = require('./geminiService');
+const teamsService = require('./teamsService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -97,6 +98,13 @@ app.post('/api/tickets', (req, res) => {
   if (req.body.sessionId) {
     conversationService.updateStatus(req.body.sessionId, 'エスカレーション');
   }
+
+  // Microsoft Teams への Adaptive Card 通知（非同期送信）
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  teamsService.sendTicketNotification(newTicket, baseUrl).catch(err => {
+    console.error('[Server] Teams notification background error:', err.message);
+  });
+
   res.status(201).json(newTicket);
 });
 
