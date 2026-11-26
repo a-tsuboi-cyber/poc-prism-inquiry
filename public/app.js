@@ -64,16 +64,25 @@ function setupEventListeners() {
   document.getElementById('roleSelect').addEventListener('change', (e) => {
     const role = e.target.value;
     currentUser.role = role;
+    const roleBadge = document.getElementById('currentUserRoleBadge');
     if (role === 'user') {
       currentUser.name = "坪井";
       currentUser.email = "a-tsuboi@ntv.co.jp";
       document.getElementById('currentUserName').textContent = `${currentUser.name} (${currentUser.email})`;
+      if (roleBadge) {
+        roleBadge.textContent = "一般ユーザ";
+        roleBadge.className = "user-role-badge";
+      }
       document.getElementById('userView').style.display = 'flex';
       document.getElementById('adminView').style.display = 'none';
     } else {
       currentUser.name = "運用管理者";
       currentUser.email = "admin@ntv.co.jp";
       document.getElementById('currentUserName').textContent = `${currentUser.name} (${currentUser.email})`;
+      if (roleBadge) {
+        roleBadge.textContent = "管理ユーザ";
+        roleBadge.className = "user-role-badge admin";
+      }
       document.getElementById('userView').style.display = 'none';
       document.getElementById('adminView').style.display = 'flex';
       loadTickets();
@@ -104,73 +113,123 @@ function setupEventListeners() {
   });
 
   // 新規チャットボタン
-  document.getElementById('btnNewChat').addEventListener('click', () => {
-    currentSessionId = `SES-${Date.now()}`;
-    const box = document.getElementById('chatMessages');
-    box.innerHTML = `
-      <div class="msg-bubble ai">
-新しい会話を開始しました。PRISMに関するご質問をどうぞ！
-      </div>
-    `;
-  });
+  document.getElementById('btnNewChat').addEventListener('click', resetChatSession);
 
-  // クローズ（解決した）アクション
+  // クローズ（解決した）アクション（一度しか押せない＆統一スタイルで新しい会話ボタン表示）
   document.getElementById('btnCloseAction').addEventListener('click', async () => {
+    const btn = document.getElementById('btnCloseAction');
+    btn.disabled = true;
+
     await fetch('/api/chat/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: currentSessionId, status: 'クローズ' })
     });
-    appendMessage('system', '✨ よかった！問題が解決して何よりです。\n別の質問がある場合は、いつでも上の「新しい会話を開始」からお声がけください。');
+
+    appendResolvedMessage();
   });
 
-  // エスカレーション（解決しない）アクション
+  // エスカレーション（解決しない）アクション（画面中央待機ローディング対応）
   document.getElementById('btnEscalateAction').addEventListener('click', async () => {
-    // サーバーからAI要約データを取得
-    const res = await fetch(`/api/chat/summary/${currentSessionId}`);
-    const summary = await res.json();
+    const btn = document.getElementById('btnEscalateAction');
+    btn.disabled = true;
 
-    document.getElementById('escSubject').value = summary.subject;
-    document.getElementById('escDetail').value = summary.detail;
-    document.getElementById('escCategory').value = summary.category;
-    document.getElementById('escUrgency').value = summary.urgency;
-    document.getElementById('escPhone').value = '';
+    // 画面中央にローディング表示
+    showCenterLoading('AIがやり取りを要約中...', 'チケットの件名と問い合わせ詳細を自動生成しています');
 
-    openModal('escalateModal');
+    try {
+      // サーバーからAI要約データを取得
+      const res = await fetch(`/api/chat/summary/${currentSessionId}`);
+      const summary = await res.json();
+
+      document.getElementById('escSubject').value = summary.subject || '';
+      document.getElementById('escDetail').value = summary.detail || '';
+      document.getElementById('escCategory').value = summary.category || '';
+      document.getElementById('escUrgency').value = summary.urgency || '中';
+      document.getElementById('escPhone').value = '';
+
+      // 緊急度「高」の場合のみ電話番号欄を表示
+      const phoneGroup = document.getElementById('escPhoneGroup');
+      if (phoneGroup) {
+        phoneGroup.style.display = (summary.urgency === '高') ? 'block' : 'none';
+      }
+
+      openModal('escalateModal');
+    } catch (err) {
+      alert('サマリーの取得に失敗しました。');
+    } finally {
+      hideCenterLoading();
+      btn.disabled = false;
+    }
   });
 
-  // チケット送信
+  // エスカレーションモーダルの緊急度切り替えイベント（高の時のみ電話番号表示）
+  const escUrgencySelect = document.getElementById('escUrgency');
+  if (escUrgencySelect) {
+    escUrgencySelect.addEventListener('change', (e) => {
+      const phoneGroup = document.getElementById('escPhoneGroup');
+      if (phoneGroup) {
+        if (e.target.value === '高') {
+          phoneGroup.style.display = 'block';
+        } else {
+          phoneGroup.style.display = 'none';
+          document.getElementById('escPhone').value = '';
+        }
+      }
+    });
+  }
+
+  // チケット送信（カテゴリ必須・電話番号任意・赤い座布団メッセージ表示）
   document.getElementById('btnSubmitEscalate').addEventListener('click', async () => {
-    const subject = document.getElementById('escSubject').value;
-    const detail = document.getElementById('escDetail').value;
+    const subject = document.getElementById('escSubject').value.trim();
+    const detail = document.getElementById('escDetail').value.trim();
     const category = document.getElementById('escCategory').value;
     const urgency = document.getElementById('escUrgency').value;
-    const phoneNumber = document.getElementById('escPhone').value;
+    const phoneNumber = document.getElementById('escPhone').value.trim();
 
-    if (!phoneNumber) {
-      alert('緊急時連絡先（電話番号）を入力してください。');
+    if (!category) {
+      alert('カテゴリを選択してください（必須項目です）。');
+      document.getElementById('escCategory').focus();
       return;
     }
 
-    const payload = {
-      sessionId: currentSessionId,
-      subject,
-      detail,
-      category,
-      urgency,
-      phoneNumber,
-      user: { name: currentUser.name, email: currentUser.email }
-    };
+    if (!subject) {
+      alert('件名を入力してください。');
+      return;
+    }
 
-    const res = await fetch('/api/tickets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const created = await res.json();
+    const submitBtn = document.getElementById('btnSubmitEscalate');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '送信中...';
 
-    closeModal('escalateModal');
-    appendMessage('system', `🚨 チケットを受け付けました（チケットID: ${created.id}）。\n運用チームより確認後、折り返しご連絡いたします。`);
+    try {
+      const payload = {
+        sessionId: currentSessionId,
+        subject,
+        detail,
+        category,
+        urgency,
+        phoneNumber,
+        user: { name: currentUser.name, email: currentUser.email }
+      };
+
+      const res = await fetch('/api/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const created = await res.json();
+
+      closeModal('escalateModal');
+
+      // 赤い座布団メッセージの追加
+      appendEscalatedMessage(created.id, subject);
+    } catch (err) {
+      alert(`チケット送信エラー: ${err.message}`);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'チケットを送信する';
+    }
   });
 
   // チケットフィルター＆ソート
@@ -345,29 +404,109 @@ function setupEventListeners() {
   document.getElementById('btnUserManuals').addEventListener('click', openUserManuals);
 }
 
-// チャット発話
+// チャット発話（ローディング表示 & タイピング風ストリーミング）
 async function handleSendMessage() {
   const input = document.getElementById('chatInput');
+  const btnSend = document.getElementById('btnSendMessage');
   const text = input.value.trim();
   if (!text) return;
 
+  // ユーザーメッセージの表示
   appendMessage('user', text);
   input.value = '';
+  input.disabled = true;
+  btnSend.disabled = true;
 
-  const res = await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sessionId: currentSessionId,
-      user: { name: currentUser.name, email: currentUser.email },
-      message: text
-    })
-  });
+  // 待機中（回答作成中）のローディングインジケーター表示
+  const loadingBubble = appendLoadingBubble();
 
-  const data = await res.json();
-  appendMessage('ai', data.aiMessage);
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sessionId: currentSessionId,
+        user: { name: currentUser.name, email: currentUser.email },
+        message: text
+      })
+    });
+
+    const data = await res.json();
+
+    // ローディング削除
+    if (loadingBubble && loadingBubble.parentNode) {
+      loadingBubble.parentNode.removeChild(loadingBubble);
+    }
+
+    // AI回答をタイピング風ストリーミング＋Markdown整形表示
+    await streamAiMessage(data.aiMessage);
+  } catch (err) {
+    if (loadingBubble && loadingBubble.parentNode) {
+      loadingBubble.parentNode.removeChild(loadingBubble);
+    }
+    appendMessage('ai', '⚠️ エラーが発生しました。時間を置いて再度お試しください。');
+  } finally {
+    input.disabled = false;
+    btnSend.disabled = false;
+    input.focus();
+  }
 }
 
+// 待機中インジケーターの追加
+function appendLoadingBubble() {
+  const box = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg-bubble ai';
+  el.innerHTML = `
+    <div class="typing-indicator" title="回答を作成中...">
+      <span></span><span></span><span></span>
+    </div>
+  `;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  return el;
+}
+
+// タイピング風ストリーミング & Markdown レンダリング
+function streamAiMessage(fullText) {
+  return new Promise((resolve) => {
+    const box = document.getElementById('chatMessages');
+    const el = document.createElement('div');
+    el.className = 'msg-bubble ai';
+    box.appendChild(el);
+
+    const hasMarked = typeof marked !== 'undefined' && marked.parse;
+    let currentIndex = 0;
+    const chunkSize = 2; // 1回あたりの出力文字数
+    const delayMs = 18;  // タイピング間隔 (ms)
+
+    function renderPartial(text, isFinished = false) {
+      if (hasMarked) {
+        // markedによるマークダウン整形
+        const html = marked.parse(text);
+        el.innerHTML = isFinished ? html : `${html}<span class="streaming-cursor"></span>`;
+      } else {
+        // フォールバック: 改行を<br>に変換
+        const safe = escapeHtml(text).replace(/\n/g, '<br>');
+        el.innerHTML = isFinished ? safe : `${safe}<span class="streaming-cursor"></span>`;
+      }
+      box.scrollTop = box.scrollHeight;
+    }
+
+    const timer = setInterval(() => {
+      currentIndex += chunkSize;
+      if (currentIndex >= fullText.length) {
+        clearInterval(timer);
+        renderPartial(fullText, true);
+        resolve();
+      } else {
+        renderPartial(fullText.slice(0, currentIndex), false);
+      }
+    }, delayMs);
+  });
+}
+
+// 通常メッセージの追加（ユーザー発話等）
 function appendMessage(sender, text) {
   const box = document.getElementById('chatMessages');
   const el = document.createElement('div');
@@ -375,6 +514,102 @@ function appendMessage(sender, text) {
   el.textContent = text;
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
+}
+
+// システムメッセージの追加（HTML許容）
+function appendSystemMessage(html) {
+  const box = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg-bubble system';
+  el.innerHTML = html;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+// 解決（クローズ）完了メッセージ（エスカレーション完了と統一されたデザイン）
+function appendResolvedMessage() {
+  const box = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg-bubble action-result-card resolved';
+  el.innerHTML = `
+    <div class="result-card-title">✨ 解決（クローズ）しました</div>
+    <div class="result-card-body">
+      問題が解決して何よりです！<br>
+      別の疑問や確認したい点がある場合は、いつでも新しい会話を開始してください。
+    </div>
+    <div class="result-card-actions">
+      <button class="btn-reset-chat-action btn-resolved-new-chat">🔄 新しい会話を開始</button>
+    </div>
+  `;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+
+  const newChatBtn = el.querySelector('.btn-resolved-new-chat');
+  if (newChatBtn) {
+    newChatBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetChatSession();
+    });
+  }
+}
+
+// エスカレーション完了メッセージ（解決メッセージと統一されたデザイン・赤い座布団）
+function appendEscalatedMessage(ticketId, subject) {
+  const box = document.getElementById('chatMessages');
+  const el = document.createElement('div');
+  el.className = 'msg-bubble action-result-card escalated';
+  el.innerHTML = `
+    <div class="result-card-title">🚨 エスカレーション完了（${ticketId}）</div>
+    <div class="result-card-body">
+      チケット（<strong>${ticketId}</strong>: ${escapeHtml(subject)}）を受領・起票しました。<br>
+      ご記入いただいた内容をもとに運用チームにて調査し、順次対応いたします。
+    </div>
+    <div class="result-card-actions">
+      <button class="btn-reset-chat-action btn-escalate-new-chat">🔄 新しい会話を開始</button>
+    </div>
+  `;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+
+  const newChatBtn = el.querySelector('.btn-escalate-new-chat');
+  if (newChatBtn) {
+    newChatBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetChatSession();
+    });
+  }
+}
+
+// 画面中央ローディングオーバーレイ制御
+function showCenterLoading(title = 'AIがやり取りを要約中...', subtitle = 'チケットの件名と問い合わせ詳細を自動生成しています') {
+  const overlay = document.getElementById('centerLoadingOverlay');
+  if (!overlay) return;
+  const tEl = document.getElementById('centerLoadingTitle');
+  const sEl = document.getElementById('centerLoadingSubtitle');
+  if (tEl) tEl.textContent = title;
+  if (sEl) sEl.textContent = subtitle;
+  overlay.style.display = 'flex';
+}
+
+function hideCenterLoading() {
+  const overlay = document.getElementById('centerLoadingOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+// 会話セッションのリセット
+function resetChatSession() {
+  currentSessionId = `SES-${Date.now()}`;
+  const closeBtn = document.getElementById('btnCloseAction');
+  if (closeBtn) closeBtn.disabled = false;
+
+  const box = document.getElementById('chatMessages');
+  box.innerHTML = `
+    <div class="msg-bubble ai">
+      新しい会話を開始しました。PRISMに関するご質問をどうぞ！
+    </div>
+  `;
+  const input = document.getElementById('chatInput');
+  if (input) input.focus();
 }
 
 // チケット一覧読み込み

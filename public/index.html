@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PRISM一次受けAIアシスタント & ナレッジ育成プラットフォーム</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -12,8 +13,6 @@
   <header class="app-header">
     <div class="brand-area">
       <h1 class="brand-title">PRISM Inquiry Desk</h1>
-      <span class="brand-badge">PoC v1.2</span>
-      <span id="aiStatusBadge" class="brand-badge" style="background: #e2e8f0; color: #475569; margin-left: 8px;">AI: 読込中...</span>
     </div>
 
     <div class="header-controls">
@@ -21,6 +20,7 @@
       <div class="user-display">
         <span>👤</span>
         <span id="currentUserName">坪井 (a-tsuboi@ntv.co.jp)</span>
+        <span id="currentUserRoleBadge" class="user-role-badge">一般ユーザ</span>
       </div>
 
       <!-- 4.1. ロール切り替え機能（PoCモック用） -->
@@ -47,7 +47,7 @@
           </div>
           <div style="display: flex; gap: 8px;">
             <button id="btnUserManuals" class="btn btn-outline" style="background: white; border: 1px solid var(--border-color); color: var(--primary);">📚 マニュアル一覧</button>
-            <button id="btnNewChat" class="btn-new-chat">🔄 新しい会話を開始</button>
+            <button id="btnNewChat" class="btn btn-primary">🔄 新しい会話を開始</button>
           </div>
         </div>
 
@@ -59,16 +59,16 @@
           </div>
         </div>
 
-        <!-- 解決アクションボタン群（送信欄近接） -->
-        <div class="chat-actions-bar">
-          <button id="btnCloseAction" class="btn btn-close-action">✨ 解決した（クローズ）</button>
-          <button id="btnEscalateAction" class="btn btn-escalate-action">🚨 解決しない（エスカレーション）</button>
-        </div>
-
         <!-- 入力バー -->
         <div class="chat-input-bar">
           <input type="text" id="chatInput" class="chat-input" placeholder="例: パートナー企業のアカウント追加申請はどうすればいい？" />
           <button id="btnSendMessage" class="btn btn-primary">送信</button>
+        </div>
+
+        <!-- 解決アクションボタン群（入力欄の下部） -->
+        <div class="chat-actions-bar">
+          <button id="btnCloseAction" class="btn btn-close-action">✨ 解決した（クローズ）</button>
+          <button id="btnEscalateAction" class="btn btn-escalate-action">🚨 解決しない（エスカレーション）</button>
         </div>
       </div>
     </section>
@@ -244,8 +244,9 @@
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
           <div class="form-group">
-            <label>カテゴリ</label>
-            <select id="escCategory" class="form-control">
+            <label>カテゴリ <span style="color: var(--danger); font-size: 12px;">*必須</span></label>
+            <select id="escCategory" class="form-control" required>
+              <option value="">-- カテゴリを選択してください --</option>
               <option value="アカウント・権限">アカウント・権限</option>
               <option value="システム不具合">システム不具合</option>
               <option value="操作方法">操作方法</option>
@@ -261,8 +262,8 @@
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label>緊急連絡先（電話番号）※必須</label>
+        <div id="escPhoneGroup" class="form-group" style="display: none;">
+          <label>緊急連絡先（電話番号）※任意</label>
           <input type="text" id="escPhone" class="form-control" placeholder="例: 090-1234-5678" />
         </div>
       </div>
@@ -503,6 +504,15 @@
         <button class="btn btn-secondary" onclick="closeModal('docDeleteConfirmModal')">キャンセル</button>
         <button id="btnConfirmDeleteDoc" class="btn btn-danger" style="background: #dc2626; color: white; border: none;">削除する</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 画面中央ローディングオーバーレイ -->
+  <div id="centerLoadingOverlay" class="center-loading-overlay" style="display: none;">
+    <div class="center-loading-card">
+      <div class="loading-spinner"></div>
+      <div class="loading-title" id="centerLoadingTitle">AIがやり取りを要約中...</div>
+      <div class="loading-subtitle" id="centerLoadingSubtitle">チケットの件名と問い合わせ詳細を自動生成しています</div>
     </div>
   </div>
 
