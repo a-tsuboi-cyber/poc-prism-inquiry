@@ -16,7 +16,29 @@ document.addEventListener('DOMContentLoaded', () => {
   loadConversations();
   loadKnowledge();
   loadDocuments();
+  checkUrlDeepLinks();
 });
+
+// URLクエリパラメータ解析（Teams通知等からのディープリンク対応）
+function checkUrlDeepLinks() {
+  const params = new URLSearchParams(window.location.search);
+  const viewParam = params.get('view');
+  const ticketIdParam = params.get('ticketId');
+
+  if (viewParam === 'admin') {
+    const roleSelect = document.getElementById('roleSelect');
+    if (roleSelect) {
+      roleSelect.value = 'admin';
+      roleSelect.dispatchEvent(new Event('change'));
+    }
+  }
+
+  if (ticketIdParam) {
+    setTimeout(() => {
+      openTicketDetail(ticketIdParam);
+    }, 350);
+  }
+}
 
 function loadSystemStatus() {
   fetch('/api/system/status')

@@ -13,6 +13,7 @@ test('【汎用】環境設定・秘密情報管理の整合性チェック (Env
     const content = fs.readFileSync(examplePath, 'utf-8');
     assert.match(content, /GEMINI_API_KEY=/, 'GEMINI_API_KEY の定義がありません');
     assert.match(content, /GEMINI_MODEL=/, 'GEMINI_MODEL の定義がありません');
+    assert.match(content, /TEAMS_WEBHOOK_URL=/, 'TEAMS_WEBHOOK_URL の定義がありません');
   });
 
   await t.test('.gitignore に .env が確実に登録されていること (秘密鍵漏洩防止)', () => {
