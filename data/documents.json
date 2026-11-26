@@ -1,5 +1,16 @@
 [
   {
+    "id": "DOC-20261126-004",
+    "title": "PRISM_監視・アラート定義書_第4版.docx",
+    "type": "knowledge",
+    "originalFileName": "PRISM_ç£è¦ã»ã¢ã©ã¼ãå®ç¾©æ¸_ç¬¬4ç.docx.pdf",
+    "fileExtension": ".pdf",
+    "fileSize": 586165,
+    "storedFileName": "DOC-20261126-004_PRISM_ç£è¦ã»ã¢ã©ã¼ãå®ç¾©æ¸_ç¬¬4ç.docx.pdf",
+    "uploadedBy": "運用管理者 (admin@ntv.co.jp)",
+    "createdAt": "2026-11-26T01:24:06.559Z"
+  },
+  {
     "id": "DOC-20261126-001",
     "title": "PRISM 初期導入・操作マニュアル v1.0",
     "type": "manual",

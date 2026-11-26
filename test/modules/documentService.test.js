@@ -37,8 +37,8 @@ test('【モジュール】documentService 単体テスト', async (t) => {
     assert.equal(found, null);
   });
 
-  await t.test('getKnowledgeDocumentsContent() がナレッジドキュメントの内容をテキストとして抽出できること', () => {
-    const content = documentService.getKnowledgeDocumentsContent();
+  await t.test('getKnowledgeDocumentsContent() がドキュメント（テキスト・PDF）の内容を抽出できること', async () => {
+    const content = await documentService.getKnowledgeDocumentsContent();
     assert.ok(typeof content === 'string');
     assert.ok(content.length > 0, '抽出テキストが空ではありません');
     assert.ok(content.includes('【登録ドキュメント:'), 'ドキュメントヘッダーが含まれる必要があります');
