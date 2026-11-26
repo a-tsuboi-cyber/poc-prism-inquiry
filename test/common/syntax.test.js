@@ -10,13 +10,26 @@ test('【汎用】全JavaScriptファイルの構文チェック (Syntax Verific
   const targetDirs = ['server', 'scripts'];
   const jsFiles = [];
 
+  function collectJsFiles(dir) {
+    if (!fs.existsSync(dir)) return [];
+    let results = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules' && entry.name !== '.git') {
+          results = results.concat(collectJsFiles(full));
+        }
+      } else if (entry.isFile() && entry.name.endsWith('.js')) {
+        results.push(full);
+      }
+    }
+    return results;
+  }
+
   for (const dir of targetDirs) {
     const fullDir = path.join(PROJECT_ROOT, dir);
-    if (!fs.existsSync(fullDir)) continue;
-    const files = fs.readdirSync(fullDir).filter(f => f.endsWith('.js'));
-    for (const f of files) {
-      jsFiles.push(path.join(fullDir, f));
-    }
+    jsFiles.push(...collectJsFiles(fullDir));
   }
 
   for (const file of jsFiles) {
