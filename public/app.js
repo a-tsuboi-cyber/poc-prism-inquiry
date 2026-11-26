@@ -5,6 +5,8 @@ let activeTicketSort = { key: 'createdAt', order: 'desc' };
 let currentDetailTicketId = null;
 let currentDetailKnowledgeId = null;
 let currentDetailSessionId = null;
+let selectedUploadFile = null;
+let deletingDocId = null;
 
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTickets();
   loadConversations();
   loadKnowledge();
+  loadDocuments();
 });
 
 function loadSystemStatus() {
@@ -68,6 +71,7 @@ function setupEventListeners() {
       if (targetId === 'ticketsTab') loadTickets();
       if (targetId === 'conversationsTab') loadConversations();
       if (targetId === 'knowledgeTab') loadKnowledge();
+      if (targetId === 'documentsTab') loadDocuments();
     });
   });
 
@@ -253,6 +257,70 @@ function setupEventListeners() {
   document.getElementById('knowledgeSearchInput').addEventListener('input', (e) => {
     loadKnowledge(e.target.value);
   });
+
+  // ========== ドキュメント管理関連イベント (新機能) ==========
+  // フィルター・ソート
+  document.getElementById('docFilterType').addEventListener('change', loadDocuments);
+  document.getElementById('docSortOrder').addEventListener('change', loadDocuments);
+
+  // 登録モーダル開閉
+  document.getElementById('btnOpenDocUpload').addEventListener('click', () => {
+    document.getElementById('docFileInput').value = '';
+    document.getElementById('docTitleInput').value = '';
+    document.getElementById('selectedFileName').style.display = 'none';
+    document.getElementById('selectedFileName').textContent = '';
+    openModal('docUploadModal');
+  });
+
+  // ファイル選択 & ドラッグ＆ドロップ
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('docFileInput');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--primary)';
+    dropZone.style.background = '#f0f9ff';
+  });
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.style.borderColor = '#cbd5e1';
+    dropZone.style.background = '#f8fafc';
+  });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#cbd5e1';
+    dropZone.style.background = '#f8fafc';
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelected(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFileSelected(e.target.files[0]);
+    }
+  });
+
+  function handleFileSelected(file) {
+    selectedUploadFile = file;
+    const nameLabel = document.getElementById('selectedFileName');
+    nameLabel.style.display = 'inline-block';
+    nameLabel.textContent = `選択中: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    const titleInput = document.getElementById('docTitleInput');
+    if (!titleInput.value) {
+      // 拡張子を除いたファイル名をタイトル初期値に
+      titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+    }
+  }
+
+  // ドキュメント登録実行
+  document.getElementById('btnSubmitDocUpload').addEventListener('click', handleDocUpload);
+
+  // 削除確定ボタン
+  document.getElementById('btnConfirmDeleteDoc').addEventListener('click', executeDeleteDoc);
+
+  // 一般ユーザー用マニュアル一覧ボタン
+  document.getElementById('btnUserManuals').addEventListener('click', openUserManuals);
 }
 
 // チャット発話
@@ -464,4 +532,187 @@ function openModal(id) {
 
 function closeModal(id) {
   document.getElementById(id).style.display = 'none';
+}
+
+// ========== ドキュメント管理ロジック (新機能) ==========
+
+// 1. 管理者: ドキュメント一覧ロード
+async function loadDocuments() {
+  const filterType = document.getElementById('docFilterType').value;
+  const sortSetting = document.getElementById('docSortOrder').value;
+
+  let sortKey = 'createdAt';
+  let sortOrder = 'desc';
+
+  if (sortSetting === 'date-asc') {
+    sortKey = 'createdAt';
+    sortOrder = 'asc';
+  } else if (sortSetting === 'type-asc') {
+    sortKey = 'type';
+    sortOrder = 'asc';
+  } else if (sortSetting === 'type-desc') {
+    sortKey = 'type';
+    sortOrder = 'desc';
+  }
+
+  let url = `/api/documents?sortKey=${sortKey}&sortOrder=${sortOrder}`;
+  if (filterType !== 'all') {
+    url += `&type=${filterType}`;
+  }
+
+  const res = await fetch(url);
+  const docs = await res.json();
+  const tbody = document.getElementById('documentsTableBody');
+  tbody.innerHTML = '';
+
+  if (docs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">登録されたドキュメントはありません</td></tr>`;
+    return;
+  }
+
+  docs.forEach(doc => {
+    const tr = document.createElement('tr');
+    const isKnowledge = doc.type === 'knowledge';
+    const typeBadge = isKnowledge
+      ? `<span style="padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #e0f2fe; color: #0284c7;">💡 ナレッジ</span>`
+      : `<span style="padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: #fef3c7; color: #b45309;">📚 マニュアル</span>`;
+
+    const formattedDate = new Date(doc.createdAt).toLocaleString('ja-JP', {
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+    });
+
+    tr.innerHTML = `
+      <td>
+        <div style="font-weight: 600; color: #1e293b;">${escapeHtml(doc.title)}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(doc.originalFileName)} (${(doc.fileSize / 1024).toFixed(1)} KB)</div>
+      </td>
+      <td>${typeBadge}</td>
+      <td style="font-size: 12px; color: var(--text-muted);">${formattedDate}</td>
+      <td style="font-size: 12px;">${escapeHtml(doc.uploadedBy || '-')}</td>
+      <td><span style="font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${doc.fileExtension || '-'}</span></td>
+      <td style="text-align: center;">
+        <button class="btn btn-sm btn-delete-doc" style="background: transparent; border: 1px solid #fecaca; color: #ef4444; padding: 4px 8px; border-radius: 4px; cursor: pointer;" title="削除">
+          🗑️ 削除
+        </button>
+      </td>
+    `;
+
+    // 削除ボタンイベント
+    tr.querySelector('.btn-delete-doc').addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmDeleteDoc(doc.id, doc.title);
+    });
+
+    tbody.appendChild(tr);
+  });
+}
+
+// 2. ドキュメント登録送信
+async function handleDocUpload() {
+  if (!selectedUploadFile) {
+    alert('ファイルを選択またはドラッグ＆ドロップしてください。');
+    return;
+  }
+
+  const titleInput = document.getElementById('docTitleInput');
+  const title = titleInput.value.trim();
+  if (!title) {
+    alert('ドキュメントタイトルを入力してください。');
+    return;
+  }
+
+  const type = document.querySelector('input[name="docType"]:checked').value;
+
+  const formData = new FormData();
+  formData.append('file', selectedUploadFile);
+  formData.append('title', title);
+  formData.append('type', type);
+  formData.append('user', JSON.stringify(currentUser));
+
+  try {
+    const res = await fetch('/api/documents', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!res.ok) throw new Error('アップロードに失敗しました');
+
+    closeModal('docUploadModal');
+    selectedUploadFile = null;
+    titleInput.value = '';
+    loadDocuments();
+    alert('ドキュメントを正常に登録しました！');
+  } catch (err) {
+    alert(`エラー: ${err.message}`);
+  }
+}
+
+// 3. 削除再確認モーダル表示
+function confirmDeleteDoc(id, title) {
+  deletingDocId = id;
+  document.getElementById('deleteTargetDocTitle').textContent = `『${title}』`;
+  openModal('docDeleteConfirmModal');
+}
+
+// 4. 削除確定処理
+async function executeDeleteDoc() {
+  if (!deletingDocId) return;
+
+  try {
+    const res = await fetch(`/api/documents/${deletingDocId}`, {
+      method: 'DELETE'
+    });
+
+    if (!res.ok) throw new Error('削除に失敗しました');
+
+    closeModal('docDeleteConfirmModal');
+    deletingDocId = null;
+    loadDocuments();
+    alert('ドキュメントを削除しました。');
+  } catch (err) {
+    alert(`エラー: ${err.message}`);
+  }
+}
+
+// 5. 一般ユーザー用: マニュアル一覧モーダル表示 & ダウンロード
+async function openUserManuals() {
+  const res = await fetch('/api/documents?type=manual');
+  const manuals = await res.json();
+  const tbody = document.getElementById('userManualTableBody');
+  tbody.innerHTML = '';
+
+  if (manuals.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">現在公開されているマニュアルはありません</td></tr>`;
+  } else {
+    manuals.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight: 600; color: #1e293b;">${escapeHtml(m.title)}</div>
+          <div style="font-size: 11px; color: var(--text-muted);">${escapeHtml(m.originalFileName)}</div>
+        </td>
+        <td><span style="font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${m.fileExtension}</span></td>
+        <td style="font-size: 12px; color: var(--text-muted);">${(m.fileSize / 1024).toFixed(1)} KB</td>
+        <td style="text-align: center;">
+          <a href="/api/documents/${m.id}/download" class="btn btn-sm btn-primary" style="display: inline-block; text-decoration: none; padding: 4px 10px; font-size: 12px;" download>
+            📥 DL
+          </a>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  openModal('userManualModal');
+}
+
+// XSSサニタイズ
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

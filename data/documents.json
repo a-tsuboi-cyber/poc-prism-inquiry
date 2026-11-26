@@ -1,0 +1,35 @@
+[
+  {
+    "id": "DOC-20261126-001",
+    "title": "PRISM 初期導入・操作マニュアル v1.0",
+    "type": "manual",
+    "originalFileName": "PRISM_Operation_Manual_v1.0.txt",
+    "fileExtension": ".txt",
+    "fileSize": 624,
+    "storedFileName": "PRISM_Operation_Manual_v1.0.txt",
+    "uploadedBy": "坪井 (a-tsuboi@ntv.co.jp)",
+    "createdAt": "2026-11-26T09:00:00+09:00"
+  },
+  {
+    "id": "DOC-20261126-002",
+    "title": "PRISM システム障害・エラーコード対応手順書",
+    "type": "knowledge",
+    "originalFileName": "PRISM_Troubleshooting_Guide.md",
+    "fileExtension": ".md",
+    "fileSize": 782,
+    "storedFileName": "PRISM_Troubleshooting_Guide.md",
+    "uploadedBy": "運用管理者 (admin@ntv.co.jp)",
+    "createdAt": "2026-11-26T09:15:00+09:00"
+  },
+  {
+    "id": "DOC-20261126-003",
+    "title": "社内パートナー連携規定 (Wands/VAP/AX-ON)",
+    "type": "knowledge",
+    "originalFileName": "Partner_Collaboration_Policy.md",
+    "fileExtension": ".md",
+    "fileSize": 530,
+    "storedFileName": "Partner_Collaboration_Policy.md",
+    "uploadedBy": "坪井 (a-tsuboi@ntv.co.jp)",
+    "createdAt": "2026-11-26T09:30:00+09:00"
+  }
+]

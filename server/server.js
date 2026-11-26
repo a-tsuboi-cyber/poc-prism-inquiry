@@ -2,14 +2,19 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
 
 const knowledgeService = require('./knowledgeService');
 const conversationService = require('./conversationService');
 const ticketService = require('./ticketService');
+const documentService = require('./documentService');
 const geminiService = require('./geminiService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Multer 一時アップロードディレクトリ
+const upload = multer({ dest: path.join(__dirname, '../uploads/temp') });
 
 app.use(cors());
 app.use(express.json());
@@ -134,6 +139,47 @@ app.put('/api/knowledge/:id', async (req, res) => {
     console.error('Knowledge update error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// 5. ドキュメント管理API (新機能)
+app.get('/api/documents', (req, res) => {
+  const { type, sortKey, sortOrder } = req.query;
+  const docs = documentService.getAll({ type, sortKey, sortOrder });
+  res.json(docs);
+});
+
+app.post('/api/documents', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'file is required' });
+    }
+    let user = null;
+    if (req.body.user) {
+      try { user = JSON.parse(req.body.user); } catch (e) {}
+    }
+    const doc = documentService.create({
+      file: req.file,
+      title: req.body.title,
+      type: req.body.type,
+      user
+    });
+    res.status(201).json(doc);
+  } catch (err) {
+    console.error('Document upload error:', err);
+    res.status(500).json({ error: 'Failed to upload document' });
+  }
+});
+
+app.delete('/api/documents/:id', (req, res) => {
+  const success = documentService.delete(req.params.id);
+  if (!success) return res.status(404).json({ error: 'Document not found' });
+  res.json({ success: true, message: 'Document deleted' });
+});
+
+app.get('/api/documents/:id/download', (req, res) => {
+  const fileInfo = documentService.getFilePath(req.params.id);
+  if (!fileInfo) return res.status(404).json({ error: 'File not found' });
+  res.download(fileInfo.path, fileInfo.originalName);
 });
 
 // サーバー起動

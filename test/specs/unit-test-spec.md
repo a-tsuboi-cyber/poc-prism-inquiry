@@ -24,7 +24,7 @@
 | `syntax.test.js` | 全JavaScriptファイルの構文チェック | `server/`, `scripts/` 配下の全 `.js` ファイルで `node --check` が正常終了すること |
 | `env.test.js` | `.env.example` の存在とキー定義 | `GEMINI_API_KEY` と `GEMINI_MODEL` が定義されていること |
 | `env.test.js` | 秘密情報の漏洩防止チェック | `.gitignore` に `.env` が確実に指定されていること |
-| `datastore.test.js` | データストアJSONの整合性 | `knowledge.json`, `tickets.json`, `conversations.json` が有効なJSON配列であること |
+| `datastore.test.js` | データストアJSONの整合性 | `knowledge.json`, `tickets.json`, `conversations.json`, `documents.json` が有効なJSON配列であること |
 
 ---
 
@@ -46,6 +46,11 @@
 | `geminiService` | `getModelName()` | 環境変数またはデフォルトの `gemini-3.8-flash` が返ること |
 | `geminiService` | `isAvailable()` | APIキーの有無に応じた真偽値（boolean）が返ること |
 | `geminiService` | `generateChatReply()` | 呼び出し時に例外を投げず、応答またはフォールバック（`null`）が返ること |
+| `documentService` | `getAll()` | ドキュメント一覧が配列で取得できること |
+| `documentService` | 種別絞り込み (`type`) | `manual` または `knowledge` の指定種別のみに絞り込めること |
+| `documentService` | `getById()` (正常/異常) | 実在IDで取得でき、存在しないIDで `null` が返ること |
+| `documentService` | `getKnowledgeDocumentsContent()` | ナレッジ種別のドキュメント内容をテキスト抽出しAIプロンプト用に統合できること |
+| `documentService` | `create()` & `delete()` | ドキュメントのアップロード登録と物理ファイル削除・データ削除が正常に動作すること |
 
 ---
 

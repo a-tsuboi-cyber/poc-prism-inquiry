@@ -23,9 +23,9 @@ const geminiService = {
 
   /**
    * チャット対話の回答生成
-   * ナレッジ一覧と対話ログをコンテキストに含めてGeminiに問い合わせる
+   * ナレッジ一覧、登録ドキュメント、および対話ログをコンテキストに含めてGeminiに問い合わせる
    */
-  async generateChatReply({ message, conversationHistory = [], knowledgeList = [] }) {
+  async generateChatReply({ message, conversationHistory = [], knowledgeList = [], documentContext = '' }) {
     if (!this.isAvailable()) {
       return null; // フォールバックトリガー
     }
@@ -40,10 +40,13 @@ const geminiService = {
       ).join('\n');
 
       const prompt = `あなたは日本テレビ及びパートナー企業（Wands, VAP, AX-ON等）向けの社内業務システム「PRISM」の一次受けAIアシスタントです。
-以下の登録ナレッジを参照し、ユーザーの質問に対して丁寧・簡潔・正確に回答してください。
+以下の登録ナレッジおよび登録ドキュメント（業務マニュアル・手順書等）を参照し、ユーザーの質問に対して丁寧・簡潔・正確に回答してください。
 
 【登録ナレッジ一覧】
 ${knowledgeContext || '（登録ナレッジなし）'}
+
+【登録ドキュメント（マニュアル・手順書・規定等）】
+${documentContext || '（登録ドキュメントなし）'}
 
 【直近の会話履歴】
 ${historyContext || '（新規対話）'}
@@ -52,8 +55,10 @@ ${historyContext || '（新規対話）'}
 ${message}
 
 【回答ルール】
-1. ナレッジに合致・関連する情報がある場合は、ナレッジの回答内容をもとに自然な言葉で案内してください。回答文末に「（💡 参照ナレッジ: [ナレッジID]）」と記載してください。
-2. ナレッジにない内容や解決できない専門的な内容の場合は、知ったかぶりをせず「該当するマニュアルが見つかりませんでした」と率直に伝え、「画面下の『エスカレーション』ボタンから運用チームへお問い合わせください」と案内してください。
+1. ナレッジまたは登録ドキュメントに該当する情報がある場合は、その内容を分かりやすく要約・引用して自然な言葉で案内してください。
+   - ナレッジを参照した場合は文末に「（💡 参照ナレッジ: [ナレッジID]）」と記載してください。
+   - ドキュメントを参照した場合は文末に「（📄 参照ドキュメント: [ドキュメント名]）」と記載してください。
+2. ナレッジやドキュメントにない内容や解決できない専門的な内容の場合は、知ったかぶりをせず「該当するマニュアルが見つかりませんでした」と率直に伝え、「画面下の『エスカレーション』ボタンから運用チームへお問い合わせください」と案内してください。
 3. 文末に、解決しない場合はエスカレーションできる旨を添えてください。
 4. JSONではなく、ユーザーにそのまま届ける通常のメッセージ文のみを出力してください。`;
 
@@ -69,7 +74,7 @@ ${message}
       // 参照ナレッジIDの抽出 (例: KN-001)
       const match = replyText.match(/KN-\d{3}/);
       const linkedKnowledgeId = match ? match[0] : null;
-      const isCandidate = !linkedKnowledgeId;
+      const isCandidate = !linkedKnowledgeId && !replyText.includes('参照ドキュメント');
 
       return {
         text: replyText,
@@ -84,7 +89,6 @@ ${message}
 
   /**
    * エスカレーションチケット用サマリー生成
-   * 会話ログから件名、詳細、カテゴリ、緊急度を構造化
    */
   async summarizeTicket({ messages = [], user = {} }) {
     if (!this.isAvailable()) {
@@ -99,7 +103,7 @@ ${message}
 ${fullLog}
 
 【出力形式】
-必ず以下のJSONフォーマットのみを出力してください。Markdownのコードブロック( \`\`\`json ... \`\`\` )で囲んで構いません。
+必ず以下のJSONフォーマットのみを出力してください。
 {
   "subject": "30文字以内の簡潔な問い合わせ件名",
   "detail": "ユーザーの困りごとや発生状況の要約（箇条書き可）",
