@@ -7,7 +7,9 @@
     "start": "node server/server.js",
     "build": "npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
-    "test": "node scripts/run-tests.js"
+    "test": "node scripts/run-tests.js",
+    "test:e2e": "playwright test",
+    "test:all": "node scripts/run-all-tests.js"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",
@@ -16,5 +18,8 @@
     "express": "^4.19.2",
     "multer": "^2.5.0",
     "pdf-parse": "^2.4.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1"
   }
 }

@@ -37,6 +37,22 @@ router.post('/', upload.single('file'), (req, res) => {
   }
 });
 
+// ドキュメント更新
+router.put('/:id', (req, res) => {
+  try {
+    const { title, type } = req.body;
+    if (title !== undefined && (!title || !String(title).trim())) {
+      return res.status(400).json({ error: 'title cannot be empty' });
+    }
+    const updated = documentService.update(req.params.id, { title, type });
+    if (!updated) return res.status(404).json({ error: 'Document not found' });
+    res.json(updated);
+  } catch (err) {
+    console.error('[DocumentRoutes] Update error:', err);
+    res.status(500).json({ error: 'Failed to update document' });
+  }
+});
+
 // ドキュメント削除
 router.delete('/:id', (req, res) => {
   const success = documentService.delete(req.params.id);

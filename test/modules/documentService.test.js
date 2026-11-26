@@ -73,4 +73,24 @@ test('【モジュール】documentService 単体テスト', async (t) => {
     assert.equal(documentService.getById(created.id), null);
     assert.equal(fs.existsSync(fileInfo.path), false);
   });
+
+  await t.test('update() がドキュメントのタイトルと種別を正しく更新できること', () => {
+    const testBuffer = Buffer.from('更新テスト用データ');
+    const created = documentService.create({
+      title: '更新前タイトル',
+      type: 'knowledge',
+      file: { originalname: 'update_test.txt', size: testBuffer.length, buffer: testBuffer }
+    });
+
+    const updated = documentService.update(created.id, {
+      title: '更新後タイトル',
+      type: 'manual'
+    });
+    assert.ok(updated);
+    assert.equal(updated.title, '更新後タイトル');
+    assert.equal(updated.type, 'manual');
+
+    // クリーンアップ
+    documentService.delete(created.id);
+  });
 });

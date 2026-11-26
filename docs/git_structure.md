@@ -69,8 +69,9 @@ gitGraph
    git pull origin main
    git checkout -b feature/<branch-name>
    ```
-2. **実装 & 単体テスト**:
-   - 実装後、必ず `npm test`（56テスト）を実行し全件パスを確認。
+2. **実装 & 単体・E2Eテスト**:
+   - 実装後、必ず総合テスト `npm run test:all`（単体58ケース + E2E 7シナリオ）を実行し全件パスを確認。
+   - 詳細方針は [E2Eテスト検証方針 & 仕様書](e2e_test_spec.md) を参照。
 3. **リモートPush & PR作成**:
    - GitHub CLI (`gh`) を利用してPRを作成。
    ```powershell

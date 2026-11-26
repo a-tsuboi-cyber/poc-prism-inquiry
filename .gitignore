@@ -16,3 +16,10 @@ node_modules/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test reports & results
+test-results/
+test/reports/playwright-html/
+test/reports/e2e-results.json
+uploads/temp/
+

@@ -17,6 +17,7 @@ PRISMシステムを利用する社内外のユーザーからの問い合わせ
   - [Git運用・ブランチ戦略](docs/git_structure.md)
   - [PRISM運用定義要約](docs/prism_knowledge_summary.md)
   - [単体テスト仕様書](test/specs/unit-test-spec.md)
+  - [E2Eテスト検証方針 & 仕様書](docs/e2e_test_spec.md)
 
 ## 🚀 クイックスタート
 ```powershell
@@ -27,6 +28,12 @@ cd frontend && npm install && cd ..
 # アプリケーション起動 (ポート3000)
 npm start
 
-# 単体テスト実行
+# 単体テスト実行 (Unit Tests: 58ケース)
 npm test
+
+# E2Eブラウザテスト実行 (Playwright: 7シナリオ)
+npm run test:e2e
+
+# 総合テスト実行 (単体テスト + E2Eテストの一括実行 & レポート出力)
+npm run test:all
 ```

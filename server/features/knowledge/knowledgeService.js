@@ -34,7 +34,7 @@ const knowledgeService = {
       let score = 0;
       if (item.question.toLowerCase().includes(q)) score += 5;
       if (item.answer.toLowerCase().includes(q)) score += 3;
-      if (item.tags.some(t => q.includes(t.toLowerCase()) || t.toLowerCase().includes(q))) score += 4;
+      if (item.tags && Array.isArray(item.tags) && item.tags.some(t => q.includes(t.toLowerCase()) || t.toLowerCase().includes(q))) score += 4;
       if (item.category.toLowerCase().includes(q)) score += 2;
       return { item, score };
     }).filter(m => m.score > 0).sort((a, b) => b.score - a.score);
@@ -44,13 +44,24 @@ const knowledgeService = {
 
   async create({ category, question, answer, tags }) {
     const list = readKnowledge();
-    const nextNum = list.length + 1;
-    const newId = `KN-${String(nextNum).padStart(3, '0')}`;
     
-    // 1. Gemini による改善ヒント生成を試行
+    // 既存ナレッジIDの最大連番を走査して安全に採番（削除後のID重複を防止）
+    const maxNum = list.reduce((max, k) => {
+      const match = k.id && k.id.match(/^KN(?:OW)?-(\d+)$/);
+      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+    }, 0);
+    const newId = `KN-${String(maxNum + 1).padStart(3, '0')}`;
+    
+    // 1. Gemini による改善ヒント生成を試行（タイムアウト保護付き）
     let hint = null;
     if (geminiService.isAvailable()) {
-      hint = await geminiService.generateKnowledgeHints({ question, answer, category });
+      try {
+        const hintPromise = geminiService.generateKnowledgeHints({ question, answer, category });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+        hint = await Promise.race([hintPromise, timeoutPromise]);
+      } catch (e) {
+        // タイムアウトまたはエラー時はフォールバックヒントへ移行
+      }
     }
 
     // 2. フォールバック: ルールベースヒント
@@ -92,8 +103,14 @@ const knowledgeService = {
     // 内容が変わった場合、Geminiでヒントを再生成
     let hint = current.aiHints;
     if (geminiService.isAvailable() && (question !== undefined || answer !== undefined)) {
-      const generatedHint = await geminiService.generateKnowledgeHints({ question: newQ, answer: newA, category: newCat });
-      if (generatedHint) hint = generatedHint;
+      try {
+        const hintPromise = geminiService.generateKnowledgeHints({ question: newQ, answer: newA, category: newCat });
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 4000));
+        const generatedHint = await Promise.race([hintPromise, timeoutPromise]);
+        if (generatedHint) hint = generatedHint;
+      } catch (e) {
+        // タイムアウトまたはエラー時は既存ヒントを維持
+      }
     }
 
     list[idx] = {
@@ -117,6 +134,15 @@ const knowledgeService = {
       item.usageCount = (item.usageCount || 0) + 1;
       writeKnowledge(list);
     }
+  },
+
+  delete(id) {
+    const list = readKnowledge();
+    const idx = list.findIndex(k => k.id === id);
+    if (idx === -1) return false;
+    list.splice(idx, 1);
+    writeKnowledge(list);
+    return true;
   }
 };
 
