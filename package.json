@@ -1,10 +1,11 @@
 {
   "name": "poc-prism-inquiry",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "PRISM一次受けAIアシスタント & ナレッジ育成プラットフォーム",
   "main": "server/server.js",
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "test": "node scripts/run-tests.js"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",
