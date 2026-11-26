@@ -61,8 +61,13 @@ const documentService = {
     if (!file) throw new Error('File is required');
     const list = readDocuments();
 
-    const timestamp = Date.now();
-    const newId = `DOC-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(list.length + 1).padStart(3, '0')}`;
+    const datePrefix = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const idRegex = new RegExp(`^DOC-${datePrefix}-(\\d+)$`);
+    const maxSeq = list.reduce((max, d) => {
+      const match = d.id && d.id.match(idRegex);
+      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+    }, 0);
+    const newId = `DOC-${datePrefix}-${String(maxSeq + 1).padStart(3, '0')}`;
     const ext = path.extname(file.originalname).toLowerCase();
     const storedFileName = `${newId}_${file.originalname}`;
     const targetPath = path.join(UPLOADS_DIR, storedFileName);
@@ -89,6 +94,32 @@ const documentService = {
     list.unshift(doc);
     writeDocuments(list);
     return doc;
+  },
+
+  /**
+   * ドキュメント更新（タイトル・種別等）
+   */
+  update(id, { title, type } = {}) {
+    const list = readDocuments();
+    const idx = list.findIndex(d => d.id === id);
+    if (idx === -1) return null;
+
+    const validatedTitle = (title !== undefined && typeof title === 'string' && title.trim())
+      ? title.trim()
+      : list[idx].title;
+    const validatedType = (type && ['knowledge', 'manual'].includes(type))
+      ? type
+      : list[idx].type;
+
+    list[idx] = {
+      ...list[idx],
+      title: validatedTitle,
+      type: validatedType,
+      updatedAt: new Date().toISOString()
+    };
+
+    writeDocuments(list);
+    return list[idx];
   },
 
   /**

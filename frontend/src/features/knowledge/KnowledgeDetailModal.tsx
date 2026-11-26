@@ -5,7 +5,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Save } from 'lucide-react';
+import { Sparkles, Save, Trash2 } from 'lucide-react';
 
 interface KnowledgeDetailModalProps {
   open: boolean;
@@ -27,6 +27,7 @@ export const KnowledgeDetailModal: React.FC<KnowledgeDetailModalProps> = ({
   const [answer, setAnswer] = useState(knowledge?.answer || '');
   const [tags, setTags] = useState(knowledge?.tags?.join(', ') || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (knowledge) {
@@ -42,9 +43,28 @@ export const KnowledgeDetailModal: React.FC<KnowledgeDetailModalProps> = ({
     }
   }, [knowledge, isNew]);
 
+  const handleDelete = async () => {
+    if (!knowledge) return;
+    if (!confirm(`ナレッジ「${knowledge.id}」を削除してもよろしいですか？`)) return;
+
+    setIsDeleting(true);
+    try {
+      await api.deleteKnowledge(knowledge.id);
+      onSaved();
+      onClose();
+    } catch (err) {
+      console.error('Failed to delete knowledge:', err);
+      alert('ナレッジの削除に失敗しました。');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!question.trim() || !answer.trim()) return;
+    const trimmedQuestion = question.trim();
+    const trimmedAnswer = answer.trim();
+    if (!trimmedQuestion || !trimmedAnswer) return;
 
     setIsSaving(true);
     try {
@@ -56,21 +76,23 @@ export const KnowledgeDetailModal: React.FC<KnowledgeDetailModalProps> = ({
       if (isNew) {
         await api.createKnowledge({
           category,
-          question: question.trim(),
-          answer: answer.trim(),
+          question: trimmedQuestion,
+          answer: trimmedAnswer,
           tags: tagArray,
         });
       } else if (knowledge) {
         await api.updateKnowledge(knowledge.id, {
           category,
-          question: question.trim(),
-          answer: answer.trim(),
+          question: trimmedQuestion,
+          answer: trimmedAnswer,
           tags: tagArray,
         });
       }
       onSaved();
+      onClose();
     } catch (err) {
       console.error('Failed to save knowledge:', err);
+      alert('ナレッジの保存に失敗しました。');
     } finally {
       setIsSaving(false);
     }
@@ -150,14 +172,30 @@ export const KnowledgeDetailModal: React.FC<KnowledgeDetailModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-            キャンセル
-          </Button>
-          <Button type="submit" disabled={isSaving} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5">
-            <Save className="h-4 w-4" />
-            {isSaving ? '保存中...' : '保存'}
-          </Button>
+        <div className="flex items-center justify-between pt-2 border-t">
+          <div>
+            {!isNew && knowledge && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSaving || isDeleting}
+                onClick={handleDelete}
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 flex items-center gap-1.5"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? '削除中...' : '削除'}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving || isDeleting}>
+              キャンセル
+            </Button>
+            <Button type="submit" disabled={isSaving || isDeleting} className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5">
+              <Save className="h-4 w-4" />
+              {isSaving ? '保存中...' : '保存'}
+            </Button>
+          </div>
         </div>
       </form>
     </Dialog>

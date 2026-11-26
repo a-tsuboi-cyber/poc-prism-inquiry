@@ -12,6 +12,19 @@ if (GEMINI_API_KEY) {
   }
 }
 
+// レスポンスからJSONを安全に抽出・パースするヘルパー
+function extractJsonFromText(text) {
+  if (!text) return null;
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.warn('[GeminiService] JSON parse error:', err.message);
+    return null;
+  }
+}
+
 const geminiService = {
   isAvailable() {
     return Boolean(aiClient && GEMINI_API_KEY);
@@ -118,11 +131,7 @@ ${fullLog}
       });
 
       const text = response.text ? response.text.trim() : '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      return null;
+      return extractJsonFromText(text);
     } catch (err) {
       console.warn(`[GeminiService] Summarization failed (${err.message}). Falling back.`);
       return null;
@@ -159,13 +168,38 @@ ${fullLog}
       });
 
       const text = response.text ? response.text.trim() : '';
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
-      }
-      return null;
+      return extractJsonFromText(text);
     } catch (err) {
       console.warn(`[GeminiService] QA extraction failed (${err.message}). Falling back.`);
+      return null;
+    }
+  },
+
+  /**
+   * ナレッジ登録・更新時のAI改善ヒント生成
+   */
+  async generateKnowledgeHints({ question = '', answer = '', category = '' } = {}) {
+    if (!this.isAvailable()) {
+      return null;
+    }
+
+    try {
+      const prompt = `以下のFAQナレッジ（質問、回答、カテゴリ）をレビューし、ユーザーの自己解決率をさらに高めるための簡潔な改善アドバイスや追記すべきポイントを日本語で1〜2文（80文字以内程度）で提案してください。
+
+【カテゴリ】${category || '一般'}
+【質問】${question}
+【回答】${answer}
+
+改善アドバイスのみを簡潔に出力してください。`;
+
+      const response = await aiClient.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: prompt
+      });
+
+      return response.text ? response.text.trim() : null;
+    } catch (err) {
+      console.warn(`[GeminiService] Knowledge hints generation failed (${err.message}).`);
       return null;
     }
   }

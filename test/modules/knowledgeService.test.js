@@ -32,4 +32,30 @@ test('【モジュール】knowledgeService 単体テスト', async (t) => {
     const results = knowledgeService.search('');
     assert.equal(results.length, all.length);
   });
+
+  await t.test('create(), update(), delete() が正しく動作すること', async () => {
+    // 1. 作成
+    const created = await knowledgeService.create({
+      category: 'テストカテゴリ',
+      question: 'テスト用の質問文ですか？',
+      answer: 'これはテスト用の回答です。',
+      tags: ['テスト', 'QA']
+    });
+    assert.ok(created.id);
+    assert.equal(created.question, 'テスト用の質問文ですか？');
+
+    // 2. 更新
+    const updated = await knowledgeService.update(created.id, {
+      question: '更新後の質問文ですか？',
+      answer: '更新後の回答です。'
+    });
+    assert.ok(updated);
+    assert.equal(updated.question, '更新後の質問文ですか？');
+    assert.equal(updated.answer, '更新後の回答です。');
+
+    // 3. 削除
+    const deleteSuccess = knowledgeService.delete(created.id);
+    assert.equal(deleteSuccess, true);
+    assert.equal(knowledgeService.getById(created.id), null);
+  });
 });
