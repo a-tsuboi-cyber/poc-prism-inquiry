@@ -6,7 +6,7 @@ const path = require('path');
 const DATA_DIR = path.join(__dirname, '../../data');
 
 test('【汎用】データストアJSON整合性チェック (Datastore Integrity)', async (t) => {
-  const jsonFiles = ['knowledge.json', 'tickets.json', 'conversations.json'];
+  const jsonFiles = ['knowledge.json', 'tickets.json', 'conversations.json', 'documents.json'];
 
   for (const filename of jsonFiles) {
     const filePath = path.join(DATA_DIR, filename);

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const knowledgeService = require('./knowledgeService');
+const documentService = require('./documentService');
 const geminiService = require('./geminiService');
 
 const CONVERSATIONS_FILE = path.join(__dirname, '../data/conversations.json');
@@ -51,6 +52,9 @@ const conversationService = {
       timestamp
     });
 
+    // 登録ナレッジドキュメントのテキスト内容を取得
+    const docContext = documentService.getKnowledgeDocumentsContent();
+
     // 1. Gemini APIによる回答生成を試行
     const allKnowledge = knowledgeService.getAll();
     let geminiResult = null;
@@ -58,7 +62,8 @@ const conversationService = {
       geminiResult = await geminiService.generateChatReply({
         message: messageText,
         conversationHistory: conv.messages,
-        knowledgeList: allKnowledge
+        knowledgeList: allKnowledge,
+        documentContext: docContext
       });
     }
 
@@ -79,8 +84,13 @@ const conversationService = {
         knowledgeService.incrementUsage(matchedKnowledge.id);
         aiResponseText = `${matchedKnowledge.answer}\n\n（💡 参照ナレッジ: ${matchedKnowledge.id} - ${matchedKnowledge.category}）\nもし解決しない場合は、下の「エスカレーション」ボタンから運用チームへお知らせください。`;
       } else {
-        conv.isKnowledgeCandidate = true;
-        aiResponseText = `申し訳ありません。ご質問の件について該当するマニュアル・ナレッジが見つかりませんでした。\n\n詳細を伺い運用チームで調査いたしますので、下の「エスカレーション」ボタンよりお問い合わせをお願いいたします。`;
+        // ドキュメント簡易マッチ判定
+        if (docContext && (messageText.includes("504") || messageText.includes("障害") || messageText.includes("タイムアウト"))) {
+          aiResponseText = `登録手順書「PRISM システム障害・エラーコード対応手順書」によると、504エラーは2GBを超える大容量アップロードまたはCloudFrontタイムアウトが主な原因です。\nファイルを2GB未満に調整するか、S3マルチパート設定をご確認ください。\n\n（📄 参照ドキュメント: PRISM システム障害・エラーコード対応手順書）\n解決しない場合は「エスカレーション」ボタンよりお問い合わせください。`;
+        } else {
+          conv.isKnowledgeCandidate = true;
+          aiResponseText = `申し訳ありません。ご質問の件について該当するマニュアル・ナレッジが見つかりませんでした。\n\n詳細を伺い運用チームで調査いたしますので、下の「エスカレーション」ボタンよりお問い合わせをお願いいたします。`;
+        }
       }
     }
 

@@ -1,5 +1,29 @@
 [
   {
+    "sessionId": "SES-1795654449548",
+    "user": {
+      "name": "坪井",
+      "email": "a-tsuboi@ntv.co.jp"
+    },
+    "startedAt": "2026-11-26T00:54:59.865Z",
+    "topic": "パートナー企業のアカウント追加申請したい",
+    "status": "進行中",
+    "linkedKnowledgeId": "KN-001",
+    "isKnowledgeCandidate": false,
+    "messages": [
+      {
+        "sender": "user",
+        "text": "パートナー企業のアカウント追加申請したい",
+        "timestamp": "09:54:59"
+      },
+      {
+        "sender": "ai",
+        "text": "社外パートナー企業（Wands、VAP、AX-ON等）のアカウント追加申請は、PRISM運用定義書第2章に基づき、主務部署の担当者様を経由して専用のGoogle申請フォームからご申請いただく運用となっております。\n\n申請の承認完了後、通常2営業日以内にアカウント発行通知メールが送付されます。\n\nご不明な点がございましたら、画面下の「エスカレーション」ボタンから運用チームへお問い合わせください。\n\n（💡 参照ナレッジ: KN-001）",
+        "timestamp": "09:55:05"
+      }
+    ]
+  },
+  {
     "sessionId": "SES-20261125-001",
     "user": {
       "name": "坪井",
