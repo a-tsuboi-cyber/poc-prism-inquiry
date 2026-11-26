@@ -3,7 +3,7 @@
 - **システム名称**: PRISM一次受けAIアシスタント (`poc-prism-inquiry`)
 - **作成日**: 2026-11-26
 - **バージョン**: 1.0.0
-- **関連ドキュメント**: [要件定義書](../requirements_definition.md) / [データモデル設計書](../data_model_er.md)
+- **関連ドキュメント**: [要件定義書 (初版 v1.0)](../../docs/requirements_v1.0_initial.md) / [データモデル設計書](../../docs/data_model_er.md) / [環境定義書](../../docs/environment_definition.md)
 
 ---
 
