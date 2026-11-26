@@ -52,8 +52,8 @@ const conversationService = {
       timestamp
     });
 
-    // 登録ナレッジドキュメントのテキスト内容を取得
-    const docContext = documentService.getKnowledgeDocumentsContent();
+    // 登録ナレッジドキュメントのテキスト内容を取得（PDF・プレーンテキスト対応）
+    const docContext = await documentService.getKnowledgeDocumentsContent();
 
     // 1. Gemini APIによる回答生成を試行
     const allKnowledge = knowledgeService.getAll();

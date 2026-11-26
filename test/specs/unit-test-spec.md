@@ -49,7 +49,7 @@
 | `documentService` | `getAll()` | ドキュメント一覧が配列で取得できること |
 | `documentService` | 種別絞り込み (`type`) | `manual` または `knowledge` の指定種別のみに絞り込めること |
 | `documentService` | `getById()` (正常/異常) | 実在IDで取得でき、存在しないIDで `null` が返ること |
-| `documentService` | `getKnowledgeDocumentsContent()` | ナレッジ種別のドキュメント内容をテキスト抽出しAIプロンプト用に統合できること |
+| `documentService` | `getKnowledgeDocumentsContent()` | ナレッジおよびマニュアル（TXT, MD, CSV, JSON, PDF）のドキュメント内容をテキスト抽出しAIプロンプト用に統合できること |
 | `documentService` | `create()` & `delete()` | ドキュメントのアップロード登録と物理ファイル削除・データ削除が正常に動作すること |
 
 ---

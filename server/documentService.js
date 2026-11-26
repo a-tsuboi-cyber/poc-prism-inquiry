@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { PDFParse } = require('pdf-parse');
 
 const DOCUMENTS_FILE = path.join(__dirname, '../data/documents.json');
 const UPLOADS_DIR = path.join(__dirname, '../uploads/documents');
+
+// メモリ内テキストキャッシュ（パースの高速化）
+const textCache = new Map();
 
 // アップロード先ディレクトリの自動作成
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -105,6 +109,7 @@ const documentService = {
       }
     }
 
+    textCache.delete(doc.storedFileName);
     list.splice(idx, 1);
     writeDocuments(list);
     return true;
@@ -121,24 +126,56 @@ const documentService = {
   },
 
   /**
+   * ファイルからテキストを抽出（プレーンテキストおよびPDFに対応）
+   */
+  async extractText(filePath, fileExtension) {
+    if (!fs.existsSync(filePath)) return '';
+    const ext = (fileExtension || '').toLowerCase();
+
+    // プレーンテキスト形式
+    if (['.txt', '.md', '.csv', '.json'].includes(ext)) {
+      return fs.readFileSync(filePath, 'utf-8');
+    }
+
+    // PDF形式
+    if (ext === '.pdf') {
+      try {
+        const buffer = fs.readFileSync(filePath);
+        const parser = new PDFParse({ data: buffer });
+        await parser.load();
+        const res = await parser.getText();
+        return res?.text || '';
+      } catch (err) {
+        console.warn(`[DocumentService] Failed to parse PDF: ${filePath}`, err.message);
+        return '';
+      }
+    }
+
+    return '';
+  },
+
+  /**
    * 登録ドキュメント（ナレッジ・マニュアル）のテキスト内容を抽出・集約（AI回答用コンテキスト）
    */
-  getKnowledgeDocumentsContent() {
-    // ナレッジだけでなくマニュアル等も含めた全ドキュメントを対象にする
+  async getKnowledgeDocumentsContent() {
     const list = this.getAll();
-    const textExtensions = ['.txt', '.md', '.csv', '.json'];
+    const supportedExtensions = ['.txt', '.md', '.csv', '.json', '.pdf'];
     let combined = '';
 
     for (const doc of list) {
-      if (textExtensions.includes(doc.fileExtension)) {
+      if (supportedExtensions.includes(doc.fileExtension)) {
         const filePath = path.join(UPLOADS_DIR, doc.storedFileName);
         if (fs.existsSync(filePath)) {
-          try {
-            const content = fs.readFileSync(filePath, 'utf-8');
+          let content = textCache.get(doc.storedFileName);
+          if (content === undefined) {
+            content = await this.extractText(filePath, doc.fileExtension);
+            textCache.set(doc.storedFileName, content);
+          }
+
+          if (content && content.trim().length > 0) {
             const typeLabel = doc.type === 'manual' ? 'マニュアル' : 'ナレッジ';
-            combined += `\n\n【登録ドキュメント: ${doc.title} [種別: ${typeLabel}] (${doc.originalFileName})】\n${content.slice(0, 3000)}`;
-          } catch (err) {
-            console.warn(`[DocumentService] Failed to read doc content: ${filePath}`, err.message);
+            // 各ドキュメント最大20,000文字まで含める（Gemini 3.8 Flashのコンテキスト長に適合）
+            combined += `\n\n【登録ドキュメント: ${doc.title} [種別: ${typeLabel}] (${doc.originalFileName})】\n${content.slice(0, 20000)}`;
           }
         }
       }
